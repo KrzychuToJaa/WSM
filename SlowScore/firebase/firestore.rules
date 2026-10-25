@@ -1,0 +1,9 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Bezpieczny punkt startowy. Reguły ról i walidacji nie są jeszcze zaimplementowane.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

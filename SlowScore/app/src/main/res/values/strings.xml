@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">SlowScore</string>
+    <string name="start_description">Turnieje akademickie w jednym miejscu.</string>
+    <string name="start_status">Szkielet projektu — lista turniejów i połączenie z Firebase zostaną dodane w kolejnych etapach.</string>
+</resources>
