@@ -17,3 +17,4 @@ dependencyResolutionManagement {
 }
 rootProject.name = "SlowScore"
 include(":app")
+include(":core")

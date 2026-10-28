@@ -1,0 +1,4 @@
+# Skrypty zależności sprawdzone dla wersji zapisanych w pnpm-lock.yaml.
+allowBuilds:
+  '@firebase/util@1.15.3': true
+  'protobufjs@7.6.6': true

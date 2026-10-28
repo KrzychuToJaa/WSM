@@ -1,4 +1,8 @@
 .gradle/
+**/node_modules/
+**/coverage/
+output/
+**/ui-debug.log
 .kotlin/
 .idea/
 **/build/

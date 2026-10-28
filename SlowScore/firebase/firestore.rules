@@ -1,9 +1,23 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Bezpieczny punkt startowy. Reguły ról i walidacji nie są jeszcze zaimplementowane.
-    match /{document=**} {
-      allow read, write: if false;
+    function signedIn() { return request.auth != null; }
+    match /tournaments/{id} {
+      allow read: if resource.data.status in ['UPCOMING', 'ONGOING']
+        || (signedIn() && (resource.data.status in ['COMPLETED', 'ARCHIVED']
+          || resource.data.ownerId == request.auth.uid
+          || request.auth.uid in resource.data.editorIds));
+      // Kazdy zapis przechodzi przez callable score z autoryzacja i transakcja.
+      allow write: if false;
     }
+    match /users/{uid} {
+      allow get: if signedIn() && request.auth.uid == uid;
+      allow list, write: if false;
+      match /followed/{id} {
+        allow read: if signedIn() && request.auth.uid == uid;
+        allow write: if false;
+      }
+    }
+    match /{document=**} { allow read, write: if false; }
   }
 }

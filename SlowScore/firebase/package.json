@@ -1,0 +1,13 @@
+{
+  "name": "slowscore-emulator-tests",
+  "private": true,
+  "scripts": {
+    "test": "firebase emulators:exec --only auth,firestore,functions --project demo-slowscore \"node --test tests/integration.test.js\"",
+    "test:android": "firebase emulators:exec --only auth,firestore,functions --project demo-slowscore \"..\\gradlew.bat -p .. --no-daemon :app:connectedDebugAndroidTest -PfirebaseEmulator=true\""
+  },
+  "devDependencies": {
+    "@firebase/rules-unit-testing": "6.0.0",
+    "firebase": "13.1.0",
+    "firebase-tools": "15.34.1"
+  }
+}
