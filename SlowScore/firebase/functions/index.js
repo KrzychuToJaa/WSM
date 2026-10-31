@@ -6,7 +6,8 @@ const { randomUUID } = require("node:crypto");
 const rules = require("./rules");
 initializeApp();
 const db = getFirestore();
-exports.score = onCall({ region: "europe-central2", enforceAppCheck: process.env.FUNCTIONS_EMULATOR !== "true", maxInstances: 10 }, async request => {
+// Wspólny projekt deweloperski: dostęp wymaga konta i uprawnień, bez rejestrowania urządzeń.
+exports.score = onCall({ region: "europe-central2", enforceAppCheck: false, maxInstances: 10 }, async request => {
   if (!request.auth) throw new HttpsError("unauthenticated", "Zaloguj się, aby kontynuować.");
   const uid = request.auth.uid, args = request.data;
   try {

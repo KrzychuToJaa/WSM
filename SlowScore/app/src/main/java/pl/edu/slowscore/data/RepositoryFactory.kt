@@ -19,7 +19,6 @@ object RepositoryFactory {
         }
         if (!forceDemo && FirebaseApp.getApps(context).any { it.name == FirebaseApp.DEFAULT_APP_NAME }) {
             val app = FirebaseApp.getInstance()
-            setupAppCheck(app)
             return FirebaseRepository(app)
         }
         val preferences = context.getSharedPreferences("slowscore_demo", Context.MODE_PRIVATE)
