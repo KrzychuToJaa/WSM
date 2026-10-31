@@ -2,7 +2,6 @@ package pl.edu.slowscore.ui
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
@@ -16,6 +15,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.compose.LifecycleStartEffect
@@ -47,14 +47,9 @@ fun SlowScoreApp(model: ScoreViewModel = viewModel()) {
         Scaffold(topBar = {
             Surface(color = RetroStyle.ink, contentColor = RetroStyle.panel) {
                 Column {
-                    Row(Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 20.dp, vertical = 18.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Column(Modifier.weight(1f)) {
-                            Text("SLOW / SCORE", style = MaterialTheme.typography.headlineSmall)
-                            Text("SPORT AKADEMICKI", color = RetroStyle.gold, style = MaterialTheme.typography.labelMedium)
-                        }
-                        Text(if (controller.repository.isDemo) "DEMO" else "SPORT",
-                            Modifier.border(1.dp, RetroStyle.gold).padding(horizontal = 8.dp, vertical = 5.dp),
-                            color = RetroStyle.gold, style = MaterialTheme.typography.labelMedium)
+                    Column(Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 20.dp, vertical = 18.dp)) {
+                        Text("SlowScore", style = MaterialTheme.typography.headlineSmall)
+                        Text("SPORT AKADEMICKI", color = RetroStyle.gold, style = MaterialTheme.typography.labelMedium)
                     }
                     HorizontalDivider(thickness = 4.dp, color = RetroStyle.gold)
                 }

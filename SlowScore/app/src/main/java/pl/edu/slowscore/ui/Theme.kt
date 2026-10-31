@@ -85,11 +85,11 @@ private fun RetroStylePreview() {
         Column(Modifier.background(RetroStyle.paper).padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
             Surface(color = RetroStyle.ink, contentColor = RetroStyle.panel) {
                 Column(Modifier.fillMaxWidth().padding(16.dp)) {
-                    Text("SLOW / SCORE", style = MaterialTheme.typography.headlineSmall)
-                    Text("SPORT AKADEMICKI", color = RetroStyle.gold, style = MaterialTheme.typography.labelMedium)
+                    Text("SlowScore", style = MaterialTheme.typography.headlineSmall)
+                    Text("TURNIEJE AKADEMICKIE", color = RetroStyle.gold, style = MaterialTheme.typography.labelMedium)
                 }
             }
-            Title("Na kampusie", "Drużyny, mecze i emocje.")
+            Title("Na kampusie", "Bądź na bieżąco z wynikami")
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 FilterChip(true, {}, label = { Text("Wszystkie") })
                 FilterChip(false, {}, label = { Text("Piłka nożna") })
