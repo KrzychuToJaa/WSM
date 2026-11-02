@@ -79,12 +79,26 @@ class ScoreController(val repository: ScoreRepository, private val clock: () -> 
         operation(id); reload(); openData(id)
         mutable.value = mutable.value.copy(message = "Zapisano zmiany.")
     }
-    suspend fun shuffle() = edit { repository.shuffle(it) }
+    suspend fun updateDetails(name: String, startDate: Long, teams: List<String>, version: Int) = edit { id ->
+        val tournament = requireNotNull(mutable.value.selected)
+        TournamentRules.updateDetails(tournament, mutable.value.user?.userId, name, startDate, teams, version, clock())
+        repository.updateDetails(id, name, startDate, teams, version)
+    }
+    suspend fun shuffle() = edit { id ->
+        val tournament = requireNotNull(mutable.value.selected)
+        TournamentRules.requireOwner(tournament, mutable.value.user?.userId)
+        require(TournamentRules.beforeStart(tournament, clock())) { "Drabinkę można losować tylko przed rozpoczęciem turnieju." }
+        require(!tournament.shuffleUsed) { "Dodatkowe losowanie zostało już wykorzystane." }
+        repository.shuffle(id)
+    }
     suspend fun publish() = edit { repository.publish(it) }
     suspend fun archive() = edit { repository.archive(it) }
     suspend fun addEditor(username: String) = edit { repository.addEditor(it, username) }
     suspend fun removeEditor(userId: String) = edit { repository.removeEditor(it, userId) }
     suspend fun saveResult(matchId: String, result: MatchResult, version: Int) = edit {
+        require(TournamentRules.canEnterResults(requireNotNull(mutable.value.selected), clock())) {
+            "Wyniki można wpisywać dopiero po rozpoczęciu turnieju."
+        }
         repository.saveResult(it, matchId, result, version)
     }
     suspend fun follow() = edit { repository.follow(it, it !in mutable.value.followed) }

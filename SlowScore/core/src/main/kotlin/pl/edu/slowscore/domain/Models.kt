@@ -24,7 +24,7 @@ data class Tournament(
     val startDate: Long, val status: TournamentStatus = TournamentStatus.DRAFT,
     val endDate: Long? = null, val teams: List<Team> = emptyList(),
     val matches: List<Match> = emptyList(), val editors: Map<String, String> = emptyMap(),
-    val version: Int = 0,
+    val version: Int = 0, val shuffleUsed: Boolean = false,
 )
 data class HistoryRange(val start: Long, val end: Long)
 data class DemoData(val tournaments: List<Tournament>, val followed: Map<String, Set<String>> = emptyMap())

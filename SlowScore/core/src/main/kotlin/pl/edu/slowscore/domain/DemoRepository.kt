@@ -2,7 +2,6 @@ package pl.edu.slowscore.domain
 
 import java.util.UUID
 
-/** Dane demonstracyjne są oddzielone od kont i danych Firebase. */
 class DemoRepository(
     savedData: DemoData? = null,
     private val clock: () -> Long = System::currentTimeMillis,
@@ -51,10 +50,12 @@ class DemoRepository(
         store(data.copy(tournaments = data.tournaments + item))
         return item.id
     }
+    override suspend fun updateDetails(id: String, name: String, startDate: Long,
+                                       teamNames: List<String>, version: Int) = update(id) {
+        TournamentRules.updateDetails(it, user?.userId, name, startDate, teamNames, version, clock())
+    }
     override suspend fun shuffle(id: String) = update(id) {
-        TournamentRules.requireOwner(it, user?.userId)
-        require(it.status == TournamentStatus.DRAFT) { "Drabinkę można zmieniać wyłącznie w szkicu." }
-        it.copy(matches = TournamentRules.bracket(it.teams, kotlin.random.Random.nextInt()), version = it.version + 1)
+        TournamentRules.shuffle(it, user?.userId, clock())
     }
     override suspend fun publish(id: String) = update(id) {
         TournamentRules.requireOwner(it, user?.userId)

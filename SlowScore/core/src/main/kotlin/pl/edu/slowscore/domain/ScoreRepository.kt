@@ -12,6 +12,7 @@ interface ScoreRepository {
     suspend fun load(feed: Feed): List<Tournament>
     suspend fun get(id: String): Tournament
     suspend fun create(name: String, sport: Sport, startDate: Long, teamNames: List<String>): String
+    suspend fun updateDetails(id: String, name: String, startDate: Long, teamNames: List<String>, version: Int)
     suspend fun shuffle(id: String)
     suspend fun publish(id: String)
     suspend fun saveResult(id: String, matchId: String, result: MatchResult, version: Int)

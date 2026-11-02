@@ -15,20 +15,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.compose.LifecycleStartEffect
 import androidx.lifecycle.viewmodel.compose.viewModel
 import pl.edu.slowscore.domain.*
 import pl.edu.slowscore.ui.screens.DetailsScreen
-import java.time.*
-import java.time.format.DateTimeFormatter
-import java.time.format.ResolverStyle
-
-internal val dateFormat: DateTimeFormatter = DateTimeFormatter.ofPattern("dd.MM.uuuu HH:mm").withResolverStyle(ResolverStyle.STRICT)
-internal val zone: ZoneId = ZoneId.of("Europe/Warsaw")
-internal fun date(value: Long): String = Instant.ofEpochMilli(value).atZone(zone).format(dateFormat)
+import pl.edu.slowscore.ui.screens.TournamentForm
 
 @Composable
 fun SlowScoreApp(model: ScoreViewModel = viewModel()) {
@@ -88,7 +81,7 @@ fun SlowScoreApp(model: ScoreViewModel = viewModel()) {
                     when {
                         state.user?.username == "" -> ProfileForm(model, state)
                         page == "account" -> AccountScreen(model, state)
-                        page == "create" -> CreateScreen(model, state) { page = "feed" }
+                        page == "create" -> TournamentForm(model, state, onClose = { page = "feed" })
                         state.selected != null -> DetailsScreen(model, state, state.selected!!)
                         else -> FeedScreen(model, state, { page = "create" }, { page = "account" })
                     }
@@ -138,7 +131,7 @@ private fun FeedScreen(model: ScoreViewModel, state: ScreenState, onCreate: () -
             Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(item.sport.title, color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelMedium)
                 Text(item.name, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                Text("${item.status.title} • drużyny: ${item.teams.size}")
+                Text("${TournamentRules.statusAt(item, System.currentTimeMillis()).title} • drużyny: ${item.teams.size}")
                 Text(date(item.startDate), style = MaterialTheme.typography.bodySmall)
             }
         }
@@ -199,29 +192,4 @@ private fun ProfileForm(model: ScoreViewModel, state: ScreenState) {
     OutlinedTextField(username, { username = it }, label = { Text("Login") }, singleLine = true)
     Button(enabled = !state.busy, onClick = { model.run { finishProfile(username) } }) { Text("Zapisz login") }
     TextButton(enabled = !state.busy, onClick = { model.run { signOut() } }) { Text("Wyloguj") }
-}
-
-@Composable
-private fun CreateScreen(model: ScoreViewModel, state: ScreenState, onBack: () -> Unit) {
-    var name by rememberSaveable { mutableStateOf("") }
-    var sportName by rememberSaveable { mutableStateOf(Sport.FOOTBALL.name) }
-    var startDate by rememberSaveable { mutableStateOf(date(System.currentTimeMillis() + 86_400_000)) }
-    var teams by rememberSaveable { mutableStateOf("") }
-    var error by rememberSaveable { mutableStateOf<String?>(null) }
-    Title("Nowy turniej", "Zapisz szkic i sprawdź drabinkę przed publikacją.")
-    OutlinedTextField(name, { name = it }, label = { Text("Nazwa turnieju") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
-    SportFilter(Sport.valueOf(sportName)) { if (it != null) sportName = it.name }
-    OutlinedTextField(startDate, { startDate = it }, label = { Text("Termin: dd.MM.rrrr GG:mm") }, supportingText = { Text("Strefa: Warszawa") }, singleLine = true, modifier = Modifier.fillMaxWidth())
-    OutlinedTextField(teams, { teams = it }, label = { Text("Drużyny — każda w osobnym wierszu") },
-        supportingText = { Text("Dodaj 4, 8 lub 16 drużyn. Kolejność wyznacza pary.") }, minLines = 5, modifier = Modifier.fillMaxWidth())
-    error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-    Button(enabled = !state.busy, onClick = {
-        try {
-            val local = LocalDateTime.parse(startDate.trim(), dateFormat)
-            require(zone.rules.getValidOffsets(local).size == 1) { "Termin wypada przy zmianie czasu. Wybierz inną godzinę." }
-            error = null
-            model.run { create(name, Sport.valueOf(sportName), local.atZone(zone).toInstant().toEpochMilli(), teams.lines().filter { it.isNotBlank() }) }
-        } catch (cause: Exception) { error = if (cause is java.time.format.DateTimeParseException) "Format daty: dd.MM.rrrr GG:mm." else cause.message }
-    }) { Text("Zapisz szkic i utwórz drabinkę") }
-    TextButton(enabled = !state.busy, onClick = onBack) { Text("Anuluj") }
 }

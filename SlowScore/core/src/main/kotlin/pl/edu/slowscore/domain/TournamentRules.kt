@@ -45,6 +45,40 @@ object TournamentRules {
         require(userId != null && userId == tournament.ownerId) { "Tylko właściciel może wykonać tę operację." }
     }
 
+    fun beforeStart(tournament: Tournament, now: Long): Boolean =
+        tournament.status in listOf(TournamentStatus.DRAFT, TournamentStatus.UPCOMING) &&
+            now < tournament.startDate && tournament.matches.none { it.result != null }
+
+    fun canEnterResults(tournament: Tournament, now: Long): Boolean =
+        tournament.status in listOf(TournamentStatus.UPCOMING, TournamentStatus.ONGOING) &&
+            now >= tournament.startDate
+
+    fun statusAt(tournament: Tournament, now: Long): TournamentStatus =
+        if (tournament.status == TournamentStatus.UPCOMING && now >= tournament.startDate)
+            TournamentStatus.ONGOING else tournament.status
+
+    fun updateDetails(tournament: Tournament, userId: String?, name: String, startDate: Long,
+                      teamNames: List<String>, expectedVersion: Int, now: Long): Tournament {
+        requireOwner(tournament, userId)
+        require(beforeStart(tournament, now)) { "Turniej można edytować tylko przed rozpoczęciem." }
+        require(tournament.version == expectedVersion) { "Turniej zmienił się. Odśwież dane i spróbuj ponownie." }
+        val teams = teamNames.mapIndexed { index, teamName ->
+            Team(tournament.teams.getOrNull(index)?.id ?: java.util.UUID.randomUUID().toString(), teamName.trim())
+        }
+        validateDraft(name, startDate, teams, now)
+        val matches = if (teams.size == tournament.teams.size) tournament.matches else bracket(teams)
+        return tournament.copy(name = name.trim(), startDate = startDate, teams = teams,
+            matches = matches, version = tournament.version + 1)
+    }
+
+    fun shuffle(tournament: Tournament, userId: String?, now: Long): Tournament {
+        requireOwner(tournament, userId)
+        require(beforeStart(tournament, now)) { "Drabinkę można losować tylko przed rozpoczęciem turnieju." }
+        require(!tournament.shuffleUsed) { "Dodatkowe losowanie zostało już wykorzystane." }
+        return tournament.copy(matches = bracket(tournament.teams, Random.nextInt()),
+            shuffleUsed = true, version = tournament.version + 1)
+    }
+
     fun validateResult(sport: Sport, match: Match, result: MatchResult) {
         val home = requireNotNull(match.homeTeamId) { "Brak gospodarzy meczu." }
         val away = requireNotNull(match.awayTeamId) { "Brak gości meczu." }
@@ -76,13 +110,13 @@ object TournamentRules {
                 "Zwycięzca nie zgadza się z wynikiem."
             }
         }
-        // Remis w piłce nożnej rozstrzyga wskazany zwycięzca po rzutach karnych.
     }
 
     fun saveResult(tournament: Tournament, userId: String?, matchId: String,
                    result: MatchResult, expectedVersion: Int, now: Long): Tournament {
         require(canEdit(tournament, userId)) { "Nie masz uprawnień do wyników." }
         require(tournament.status in listOf(TournamentStatus.UPCOMING, TournamentStatus.ONGOING)) { "Turniej nie przyjmuje wyników." }
+        require(now >= tournament.startDate) { "Wyniki można wpisywać dopiero po rozpoczęciu turnieju." }
         val match = tournament.matches.find { it.id == matchId } ?: error("Nie znaleziono meczu.")
         require(match.version == expectedVersion) { "Wynik zmienił się. Odśwież dane i spróbuj ponownie." }
         validateResult(tournament.sport, match, result)

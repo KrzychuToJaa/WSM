@@ -11,7 +11,6 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.tasks.await
 import pl.edu.slowscore.domain.*
 
-/** Odczyt z Firestore; zapisy waliduje funkcja serwerowa score. */
 class FirebaseRepository(app: FirebaseApp, emulator: Boolean = false) : ScoreRepository {
     override val isDemo = false
     private val auth = FirebaseAuth.getInstance(app)
@@ -91,6 +90,10 @@ class FirebaseRepository(app: FirebaseApp, emulator: Boolean = false) : ScoreRep
     override suspend fun create(name: String, sport: Sport, startDate: Long, teamNames: List<String>): String {
         val result = call("create", mapOf("name" to name, "sport" to sport.name, "startDate" to startDate, "teamNames" to teamNames)) as Map<*, *>
         return result["id"] as String
+    }
+    override suspend fun updateDetails(id: String, name: String, startDate: Long, teamNames: List<String>, version: Int) {
+        call("updateDetails", mapOf("id" to id, "name" to name, "startDate" to startDate,
+            "teamNames" to teamNames, "version" to version))
     }
     override suspend fun shuffle(id: String) { call("shuffle", mapOf("id" to id)) }
     override suspend fun publish(id: String) { call("publish", mapOf("id" to id)) }

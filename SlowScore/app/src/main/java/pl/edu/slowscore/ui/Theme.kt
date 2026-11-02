@@ -16,7 +16,6 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
-// Główne ustawienia wyglądu. Kolory zapisujemy jako 0xFF + kod HEX.
 object RetroStyle {
     val paper = Color(0xFFF4E9CD)
     val panel = Color(0xFFFFF8E4)
@@ -53,7 +52,6 @@ private val retroColors = lightColorScheme(
     errorContainer = Color(0xFFF5D6C8), onErrorContainer = Color(0xFF601F19),
 )
 
-// Monospace przypomina tablicę wyników; dłuższe teksty zachowują zwykłą, czytelną czcionkę.
 private val retroTypography = Typography().let { base ->
     base.copy(
         displaySmall = base.displaySmall.copy(fontFamily = RetroStyle.displayFont, fontWeight = FontWeight.Black),
@@ -72,12 +70,10 @@ fun SlowScoreTheme(content: @Composable () -> Unit) {
         shapes = Shapes(extraSmall = shape, small = shape, medium = shape, large = shape, extraLarge = shape), content = content)
 }
 
-// Wspólne obramowanie kart na liście turniejów, w drabince i w komunikatach.
 internal fun Modifier.retroPanel(): Modifier = drawBehind {
     drawRect(RetroStyle.ink.copy(alpha = 0.16f), topLeft = Offset(4.dp.toPx(), 4.dp.toPx()), size = size)
 }.border(RetroStyle.border, RetroStyle.ink, RoundedCornerShape(RetroStyle.corner))
 
-// Podgląd bez Firebase: otwórz ten plik w Android Studio i wybierz Split albo Design.
 @Preview(showBackground = true, widthDp = 360)
 @Composable
 private fun RetroStylePreview() {
