@@ -50,7 +50,18 @@ test("callable lifecycle, permissions, concurrent scores and Firestore rules", {
   await assertSucceeds(getDoc(ref(editorDb)));
   await assertSucceeds(getDocs(query(collection(editorDb, "tournaments"), where("editorIds", "array-contains", editor.uid))));
   await denied(editor, "addEditor", { id, username: "viewer" }); await denied(owner, "addEditor", { id, username: "missing" });
-  await ok(owner, "shuffle", { id }); await ok(owner, "publish", { id });
+  await ok(owner, "shuffle", { id });
+  await denied(owner, "shuffle", { id });
+  const draft = await read();
+  await ok(owner, "updateDetails", { id, name: "Updated Campus Cup", startDate: Date.now() + 5000,
+    teamNames: args.teamNames, version: draft.version });
+  const updated = await read();
+  assert.equal(updated.name, "Updated Campus Cup");
+  assert.equal(updated.shuffleUsed, true);
+  await denied(owner, "shuffle", { id });
+  await denied(owner, "updateDetails", { id, name: draft.name, startDate: updated.startDate,
+    teamNames: args.teamNames, version: draft.version });
+  await ok(owner, "publish", { id });
   await assertSucceeds(getDoc(ref(guest)));
   await assertSucceeds(getDocs(query(collection(guest, "tournaments"), where("status", "in", ["UPCOMING", "ONGOING"]))));
   await assertFails(getDocs(collection(guest, "tournaments")));
@@ -61,6 +72,7 @@ test("callable lifecycle, permissions, concurrent scores and Firestore rules", {
   const score = { id, matchId: first.id, version: first.version,
     result: { homeScore: 2, awayScore: 0, winnerId: first.homeTeamId, sets: [] } };
   await denied(viewer, "result", score); await assertFails(setDoc(ref(editorDb), { matches: [] }, { merge: true }));
+  await new Promise(resolve => setTimeout(resolve, Math.max(0, updated.startDate - Date.now() + 50)));
   const concurrent = await Promise.all([call(editor, "result", score), call(editor, "result", score)]);
   assert.equal(concurrent.filter(response => response.error).length, 1);
   await ok(owner, "removeEditor", { id, userId: editor.uid });

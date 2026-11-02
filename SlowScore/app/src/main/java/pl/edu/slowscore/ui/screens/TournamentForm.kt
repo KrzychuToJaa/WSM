@@ -16,21 +16,12 @@ internal fun TournamentForm(model: ScoreViewModel, state: ScreenState,
     val editing = item != null
     var name by rememberSaveable(item?.id) { mutableStateOf(item?.name ?: "") }
     var sportName by rememberSaveable(item?.id) { mutableStateOf(item?.sport?.name ?: Sport.FOOTBALL.name) }
-    var startDate by rememberSaveable(item?.id) { mutableStateOf(date(item?.startDate ?: (System.currentTimeMillis() + 86_400_000))) }
+    var startDate by rememberSaveable(item?.id) { mutableStateOf(date(item?.startDate ?: (model.controller.now() + 86_400_000))) }
     var teams by rememberSaveable(item?.id) { mutableStateOf(item?.teams?.joinToString("\n") { it.name } ?: "") }
     var error by rememberSaveable(item?.id) { mutableStateOf<String?>(null) }
-    var submitted by remember { mutableStateOf(false) }
     val initialVersion = remember(item?.id) { item?.version ?: 0 }
 
     BackHandler { if (!state.busy) onClose() }
-    LaunchedEffect(submitted, state.busy, state.error, state.selected?.version) {
-        if (submitted && !state.busy) {
-            val saved = if (editing) state.selected?.id == item?.id && state.selected?.version != initialVersion
-                else state.selected != null
-            if (state.error == null && saved) onClose()
-            else { submitted = false; error = state.error }
-        }
-    }
 
     Title(if (editing) "Edytuj turniej" else "Nowy turniej",
         if (editing) "Nazwę, drużyny i termin możesz zmieniać przed rozpoczęciem."
@@ -47,17 +38,16 @@ internal fun TournamentForm(model: ScoreViewModel, state: ScreenState,
         minLines = 5, modifier = Modifier.fillMaxWidth())
     if (editing) Text("Przy tej samej liczbie drużyn pary zostają zachowane. Zmiana liczby drużyn tworzy nową drabinkę i nie przywraca dodatkowego losowania.")
     error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-    Button(enabled = !state.busy && !submitted, onClick = {
+    Button(enabled = !state.busy, onClick = {
         try {
             val time = parseDate(startDate)
             val names = teams.lines().map { it.trim() }.filter { it.isNotEmpty() }
-            TournamentRules.validateDraft(name, time, names.mapIndexed { index, team -> Team(index.toString(), team) }, System.currentTimeMillis())
+            TournamentRules.validateDraft(name, time, names.mapIndexed { index, team -> Team(index.toString(), team) }, model.controller.now())
             error = null
-            submitted = true
-            model.run {
+            model.submit(block = {
                 if (editing) updateDetails(name, time, names, initialVersion)
                 else create(name, Sport.valueOf(sportName), time, names)
-            }
+            }, onSuccess = onClose)
         } catch (cause: Exception) {
             error = if (cause is DateTimeParseException) "Format daty: dd.MM.rrrr GG:mm." else cause.message
         }

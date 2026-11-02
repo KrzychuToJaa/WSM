@@ -5,6 +5,7 @@ import androidx.test.platform.app.InstrumentationRegistry
 import com.google.firebase.FirebaseApp
 import com.google.firebase.FirebaseOptions
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.delay
 import org.junit.Assert.*
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -27,7 +28,12 @@ class FirebaseFlowTest {
         val id = repo.create("Android SDK Cup", Sport.FOOTBALL, System.currentTimeMillis() + 3600000,
             listOf("Team A", "Team B", "Team C", "Team D"))
         assertEquals(3, repo.get(id).matches.size)
-        repo.shuffle(id); repo.publish(id)
+        repo.shuffle(id)
+        val draft = repo.get(id)
+        repo.updateDetails(id, "Updated Android SDK Cup", System.currentTimeMillis() + 15000,
+            draft.teams.map { it.name }, draft.version)
+        assertTrue(repo.get(id).shuffleUsed)
+        repo.publish(id)
         val editor = repo.signUp("editor$suffix@example.com", password, "editor$suffix")
         try {
             repo.addEditor(id, owner.username)
@@ -39,6 +45,7 @@ class FirebaseFlowTest {
         repo.signIn("editor$suffix@example.com", password)
         assertTrue(repo.load(Feed.MINE).any { it.id == id })
         repo.follow(id, true); assertTrue(id in repo.followedIds())
+        delay(maxOf(0L, repo.get(id).startDate - System.currentTimeMillis() + 50))
         for (matchId in listOf("0_0", "0_1", "1_0")) {
             val match = repo.get(id).matches.first { it.id == matchId }
             repo.saveResult(id, matchId, MatchResult(2, 0, match.homeTeamId!!), match.version)

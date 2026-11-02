@@ -6,7 +6,8 @@ import org.junit.Test
 
 class DemoRepositoryTest {
     private val now = 1_800_000_000_000L
-    private fun repo(persist: (DemoData) -> Unit = {}) = DemoRepository(clock = { now }, persist = persist)
+    private var time = now
+    private fun repo(persist: (DemoData) -> Unit = {}) = DemoRepository(clock = { time }, persist = persist)
     private suspend fun reject(block: suspend () -> Unit) {
         try { block(); fail("Expected rejection") } catch (error: Exception) { assertFalse(error.message.isNullOrBlank()) }
     }
@@ -48,6 +49,8 @@ class DemoRepositoryTest {
         reject { repo.saveResult(id, match.id, MatchResult(2, 0, match.homeTeamId!!), match.version) }
         repo.useDemoUser("demo_owner")
         repo.addEditor(id, "editor"); repo.useDemoUser("demo_editor")
+        reject { repo.saveResult(id, match.id, MatchResult(2, 0, match.homeTeamId!!), match.version) }
+        time = repo.get(id).startDate
         for (matchId in listOf("0_0", "0_1", "1_0")) {
             val current = repo.get(id).matches.first { it.id == matchId }
             repo.saveResult(id, current.id, MatchResult(2, 0, current.homeTeamId!!), current.version)
@@ -55,7 +58,7 @@ class DemoRepositoryTest {
         assertEquals(TournamentStatus.COMPLETED, repo.get(id).status)
         repo.useDemoUser("demo_owner"); repo.follow(id, true); repo.archive(id)
         assertEquals(TournamentStatus.ARCHIVED, repo.load(Feed.FOLLOWED).single().status)
-        assertEquals(now, repo.get(id).endDate)
+        assertEquals(time, repo.get(id).endDate)
         assertTrue(saved!!.tournaments.any { it.id == id })
         val restored = DemoRepository(savedData = saved, clock = { now })
         restored.useDemoUser("demo_owner"); assertEquals(repo.get(id), restored.get(id)); assertEquals(repo.followedIds(), restored.followedIds())

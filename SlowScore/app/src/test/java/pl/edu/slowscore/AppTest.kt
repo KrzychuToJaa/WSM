@@ -18,8 +18,9 @@ import pl.edu.slowscore.ui.*
 class AppTest {
     @get:Rule val compose = createComposeRule()
     private lateinit var model: ScoreViewModel
-    private fun start(repository: ScoreRepository = DemoRepository()) {
-        model = ScoreViewModel(ApplicationProvider.getApplicationContext<Application>(), repository)
+    private var now = System.currentTimeMillis()
+    private fun start(repository: ScoreRepository = DemoRepository(clock = { now })) {
+        model = ScoreViewModel(ApplicationProvider.getApplicationContext<Application>(), repository, clock = { now })
         compose.setContent { SlowScoreApp(model) }
         compose.waitForIdle()
     }
@@ -29,6 +30,11 @@ class AppTest {
         node.performClick(); compose.waitForIdle()
     }
     private fun action(block: suspend ScoreController.() -> Unit) { compose.runOnIdle { model.run(block) }; compose.waitForIdle() }
+    private fun startTournament() {
+        compose.runOnIdle { now = model.controller.state.value.selected!!.startDate }
+        action { refresh() }
+        compose.waitForIdle()
+    }
 
     @Test fun guestCanFilterBrowseAndReachLogin() {
         start()
@@ -51,13 +57,16 @@ class AppTest {
         click("Zapisz szkic i utwórz drabinkę")
         compose.onNodeWithText("Test Cup").assertExists()
         click("Losuj pary ponownie")
+        click("Potwierdź")
+        compose.onNodeWithText("Losuj pary ponownie").assertIsNotEnabled()
         compose.onNodeWithText("Login edytora").performTextInput("editor")
         click("Nadaj uprawnienia")
         click("Odbierz"); click("Anuluj")
         click("Odbierz"); click("Potwierdź")
         click("Opublikuj turniej"); click("Potwierdź")
         click("Obserwuj turniej"); click("Przestań obserwować")
-        // Pierwszy mecz zapisujemy przez rzeczywisty formularz.
+        compose.onNodeWithText("Wpisz wynik").assertDoesNotExist()
+        startTournament()
         val item = model.controller.state.value.selected!!
         val firstMatch = item.matches.first()
         val homeName = item.teams.first { it.id == firstMatch.homeTeamId }.name
@@ -82,6 +91,7 @@ class AppTest {
     }
     @Test fun resultFormRejectsInvalidValuesAndShowsVolleyballSets() {
         start(); action { demoUser("demo_owner"); open("sample_2") }
+        startTournament()
         compose.onAllNodesWithText("Wpisz wynik").onFirst().performScrollTo().performClick()
         compose.onNodeWithText("Sety, np. 25:20 — każdy w nowym wierszu").performTextInput("25:24\n25:0\n25:0")
         click("Zapisz wynik")
@@ -117,5 +127,43 @@ class AppTest {
         click("Anuluj"); compose.onNodeWithText("Na kampusie").assertExists()
         action { open("missing") }; compose.onNodeWithText("Nie znaleziono turnieju.").assertExists()
         click("Odśwież dane")
+    }
+    @Test fun ownerEditsTournamentWithoutRestoringConsumedShuffle() {
+        start(); action { demoUser("demo_owner"); create("Edit Cup", Sport.FOOTBALL, now + 60000, listOf("AA", "BB", "CC", "DD")) }
+        click("Losuj pary ponownie"); click("Potwierdź")
+        click("Edytuj turniej")
+        compose.onNodeWithText("Nazwa turnieju").performTextReplacement("Updated Cup")
+        compose.onNodeWithText("Termin: dd.MM.rrrr GG:mm").performTextReplacement(date(now + 120000))
+        compose.onNodeWithText("Drużyny — każda w osobnym wierszu").performTextReplacement(
+            (1..8).joinToString("\n") { "Team $it" })
+        click("Zapisz zmiany")
+        compose.onNodeWithText("Updated Cup").assertExists()
+        compose.onNodeWithText("Edytuj turniej", substring = false).assertExists()
+        compose.onNodeWithText("Losuj pary ponownie").assertIsNotEnabled()
+        val item = model.controller.state.value.selected!!
+        assertEquals(8, item.teams.size)
+        assertEquals(7, item.matches.size)
+        assertTrue(item.shuffleUsed)
+        click("Opublikuj turniej"); click("Potwierdź")
+        startTournament()
+        compose.onNodeWithText("Edytuj turniej").assertDoesNotExist()
+        compose.onAllNodesWithText("Wpisz wynik").onFirst().assertExists()
+    }
+    @Test fun failedEditKeepsInputAndDoesNotCloseForm() {
+        val demo = DemoRepository(clock = { now })
+        val repository = object : ScoreRepository by demo {
+            override suspend fun updateDetails(id: String, name: String, startDate: Long, teamNames: List<String>, version: Int) {
+                error("Nie udało się zapisać zmian.")
+            }
+        }
+        start(repository)
+        action { demoUser("demo_owner"); open("sample_0") }
+        click("Edytuj turniej")
+        compose.onNodeWithText("Nazwa turnieju").performTextReplacement("Unsaved Cup")
+        click("Zapisz zmiany")
+        compose.onNodeWithText("Zapisz zmiany").assertExists()
+        compose.onNodeWithText("Unsaved Cup").assertExists()
+        compose.onNodeWithText("Nie udało się zapisać zmian.").assertExists()
+        assertEquals("Puchar kampusu", model.controller.state.value.selected!!.name)
     }
 }

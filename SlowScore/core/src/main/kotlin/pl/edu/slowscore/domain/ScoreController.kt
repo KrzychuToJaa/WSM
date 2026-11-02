@@ -10,11 +10,13 @@ data class ScreenState(
     val items: List<Tournament> = emptyList(), val selected: Tournament? = null,
     val followed: Set<String> = emptySet(), val busy: Boolean = false,
     val error: String? = null, val message: String? = null,
+    val now: Long = 0,
 )
 
 class ScoreController(val repository: ScoreRepository, private val clock: () -> Long = System::currentTimeMillis) {
     private val mutable = MutableStateFlow(ScreenState())
     val state = mutable.asStateFlow()
+    fun now(): Long = clock()
     val visibleItems: List<Tournament> get() = with(mutable.value) {
         TournamentRules.filter(items, sport, if (feed == Feed.HISTORY) TournamentRules.historyRange(clock(), monthly, offset) else null)
     }
@@ -40,7 +42,7 @@ class ScoreController(val repository: ScoreRepository, private val clock: () -> 
         val feed = if (user == null) Feed.PUBLIC else mutable.value.feed
         val items = repository.load(feed)
         val followed = if (user == null) emptySet() else repository.followedIds()
-        mutable.value = mutable.value.copy(user = user, feed = feed, items = items, followed = followed)
+        mutable.value = mutable.value.copy(user = user, feed = feed, items = items, followed = followed, now = clock())
     }
     suspend fun refresh() = action { reload(); mutable.value.selected?.id?.let { openData(it) } }
     suspend fun feed(feed: Feed) = action {

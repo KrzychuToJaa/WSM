@@ -6,7 +6,8 @@ import org.junit.Test
 
 class ScoreControllerTest {
     private val now = 1_800_000_000_000L
-    private fun controller() = ScoreController(DemoRepository(clock = { now }), clock = { now })
+    private var time = now
+    private fun controller() = ScoreController(DemoRepository(clock = { time }), clock = { time })
     @Test fun `guest filters periods detail and errors preserve state`() = runBlocking {
         val c = controller()
         c.refresh(); assertEquals(3, c.visibleItems.size)
@@ -36,6 +37,7 @@ class ScoreControllerTest {
         c.publish(); assertEquals(TournamentStatus.UPCOMING, c.state.value.selected!!.status)
         c.follow(); assertTrue(id in c.state.value.followed)
         c.follow(); assertFalse(id in c.state.value.followed)
+        time = c.state.value.selected!!.startDate
         for (matchId in listOf("0_0", "0_1", "1_0")) {
             val match = c.state.value.selected!!.matches.first { it.id == matchId }
             c.saveResult(matchId, MatchResult(80, 60, match.homeTeamId!!), match.version)

@@ -11,7 +11,7 @@ function cup(count = 4, sport = "FOOTBALL") {
 function result(item, matchId, uid = "owner") {
   const match = item.matches.find(m => m.id === matchId);
   return r.change(item, uid, "result", { matchId, version: match.version,
-    result: { homeScore: 2, awayScore: 0, winnerId: match.homeTeamId, sets: [] } }, now);
+    result: { homeScore: 2, awayScore: 0, winnerId: match.homeTeamId, sets: [] } }, item.startDate);
 }
 test("profile and draft validation", () => {
   assert.equal(r.username(" OWNER_1 "), "owner_1");
@@ -33,10 +33,12 @@ test("only owner manages tournament", () => {
   for (const action of ["shuffle", "publish", "archive", "addEditor", "removeEditor"])
     for (const uid of ["editor", "viewer", null]) assert.throws(() => r.change(cup(), uid, action, {}, now), { code: "permission-denied" });
 });
-test("publishing freezes bracket, archive preserves completion date", () => {
+test("published tournament allows one shuffle before start, archive preserves date", () => {
   const published = r.change(cup(), "owner", "publish", {}, now);
   assert.equal(published.status, "UPCOMING");
-  assert.throws(() => r.change(published, "owner", "shuffle", {}, now));
+  const shuffled = r.change(published, "owner", "shuffle", {}, now);
+  assert.equal(shuffled.shuffleUsed, true);
+  assert.throws(() => r.change(shuffled, "owner", "shuffle", {}, now));
   assert.throws(() => r.change(published, "owner", "publish", {}, now));
   assert.throws(() => r.change(published, "owner", "archive", {}, now));
   const archived = r.change({ ...published, status: "COMPLETED", endDate: 99 }, "owner", "archive", {}, now);
@@ -53,9 +55,9 @@ test("full eight-team tournament advances winners and rejects stale scores", () 
   let item = r.change(cup(8), "owner", "publish", {}, now);
   const before = item; item = result(item, "0_0");
   assert.equal(before.matches[0].result, null);
-  assert.throws(() => r.change(item, "owner", "result", { matchId: "0_0", version: 0 }, now), { code: "aborted" });
+  assert.throws(() => r.change(item, "owner", "result", { matchId: "0_0", version: 0 }, item.startDate), { code: "aborted" });
   for (const id of ["0_1", "0_2", "0_3", "1_0", "1_1", "2_0"]) item = result(item, id);
-  assert.equal(item.status, "COMPLETED"); assert.equal(item.endDate, now);
+  assert.equal(item.status, "COMPLETED"); assert.equal(item.endDate, item.startDate);
 });
 test("missing participants and downstream results prevent corrections", () => {
   let item = r.change(cup(8), "owner", "publish", {}, now);
@@ -78,4 +80,34 @@ test("volleyball validates three and five sets and stopping at three wins", () =
   r.score("VOLLEYBALL", match, score([win, lose, win, lose, { home: 17, away: 15 }]));
   for (const sets of [[win, win], [win, win, win, lose], [win, win, { home: 26, away: 20 }],
     [win, lose, win, lose, { home: 15, away: 14 }]]) assert.throws(() => r.score("VOLLEYBALL", match, score(sets)));
+});
+test("results require the scheduled start time", () => {
+  const item = r.change(cup(), "owner", "publish", {}, now);
+  const match = item.matches[0];
+  const args = { matchId: match.id, version: match.version,
+    result: { homeScore: 2, awayScore: 0, winnerId: match.homeTeamId, sets: [] } };
+  assert.throws(() => r.change(item, "owner", "result", args, item.startDate - 1), { code: "failed-precondition" });
+  assert.equal(r.change(item, "owner", "result", args, item.startDate).status, "ONGOING");
+});
+test("editing checks owner, version and deadline while preserving pairs", () => {
+  const item = r.change(cup(), "owner", "publish", {}, now);
+  const args = { name: "Updated Cup", startDate: now + 2000,
+    teamNames: ["New A", "New B", "New C", "New D"], version: item.version };
+  const changed = r.change(item, "owner", "updateDetails", args, now);
+  assert.equal(changed.name, args.name);
+  assert.deepEqual(changed.matches, item.matches);
+  assert.deepEqual(changed.teams.map(team => team.name), args.teamNames);
+  assert.throws(() => r.change(item, "editor", "updateDetails", args, now), { code: "permission-denied" });
+  assert.throws(() => r.change(changed, "owner", "updateDetails", args, now), { code: "aborted" });
+  assert.throws(() => r.change(item, "owner", "updateDetails", args, item.startDate), { code: "failed-precondition" });
+});
+test("changing team count does not restore a consumed shuffle", () => {
+  const item = r.change(cup(), "owner", "shuffle", {}, now);
+  const changed = r.change(item, "owner", "updateDetails", {
+    name: item.name, startDate: item.startDate, version: item.version,
+    teamNames: Array.from({ length: 8 }, (_, index) => `New ${index}`)
+  }, now);
+  assert.equal(changed.matches.length, 7);
+  assert.equal(changed.shuffleUsed, true);
+  assert.throws(() => r.change(changed, "owner", "shuffle", {}, now), { code: "failed-precondition" });
 });

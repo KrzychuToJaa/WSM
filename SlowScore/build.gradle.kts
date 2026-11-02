@@ -1,3 +1,5 @@
+import java.nio.file.Files
+
 plugins {
     jacoco
     id("com.android.application") version "9.5.0" apply false
@@ -5,6 +7,18 @@ plugins {
     id("org.jetbrains.kotlin.plugin.compose") version "2.2.10" apply false
     id("org.jetbrains.kotlin.jvm") version "2.2.10" apply false
     id("com.google.gms.google-services") version "4.4.2" apply false
+}
+
+if (System.getProperty("os.name").startsWith("Windows")) {
+    for (name in listOf("build", "app/build", "core/build")) {
+        val folder = layout.projectDirectory.dir(name).asFile
+        if (folder.exists()) {
+            folder.walkTopDown()
+                .onEnter { !Files.isSymbolicLink(it.toPath()) }
+                .filterNot { Files.isSymbolicLink(it.toPath()) }
+                .forEach { Files.setAttribute(it.toPath(), "dos:readonly", false) }
+        }
+    }
 }
 
 jacoco { toolVersion = "0.8.15" }

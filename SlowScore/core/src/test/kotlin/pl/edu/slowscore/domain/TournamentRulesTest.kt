@@ -9,7 +9,7 @@ class TournamentRulesTest {
     private fun teams(size: Int = 4) = (1..size).map { Team("$it", "Team $it") }
     private fun tournament(size: Int = 4, sport: Sport = Sport.FOOTBALL): Tournament {
         val teams = teams(size)
-        return Tournament("id", "Campus Cup", sport, "owner", now + 10000, TournamentStatus.UPCOMING,
+        return Tournament("id", "Campus Cup", sport, "owner", now - 10000, TournamentStatus.UPCOMING,
             teams = teams, matches = TournamentRules.bracket(teams), editors = mapOf("editor" to "editor"))
     }
     private fun reject(block: () -> Unit) { assertThrows(Exception::class.java, block) }
@@ -130,5 +130,39 @@ class TournamentRulesTest {
         assertEquals(setOf("id", "archived"), TournamentRules.filter(items, null, week).map { it.id }.toSet())
         assertTrue(TournamentRules.filter(items, Sport.BASKETBALL, week).isEmpty())
         assertEquals(items.size, TournamentRules.filter(items, Sport.FOOTBALL).size)
+    }
+    @Test fun `results are blocked before start and accepted at the start`() {
+        val item = tournament().copy(startDate = now + 1000)
+        val match = item.matches.first()
+        reject { TournamentRules.saveResult(item, "owner", match.id, result(match), 0, now) }
+        assertFalse(TournamentRules.canEnterResults(item, now))
+        assertEquals(TournamentStatus.UPCOMING, TournamentRules.statusAt(item, now))
+        assertTrue(TournamentRules.canEnterResults(item, item.startDate))
+        assertEquals(TournamentStatus.ONGOING, TournamentRules.statusAt(item, item.startDate))
+        assertNotNull(TournamentRules.saveResult(item, "owner", match.id, result(match), 0, item.startDate).matches.first().result)
+    }
+    @Test fun `editing preserves pairs and checks owner version and start time`() {
+        val item = tournament().copy(startDate = now + 1000)
+        val names = listOf("Nowa A", "Nowa B", "Nowa C", "Nowa D")
+        val changed = TournamentRules.updateDetails(item, "owner", "Nowy turniej", now + 2000, names, 0, now)
+        assertEquals("Nowy turniej", changed.name)
+        assertEquals(names, changed.teams.map { it.name })
+        assertEquals(item.matches, changed.matches)
+        reject { TournamentRules.updateDetails(item, "editor", "Nowy turniej", now + 2000, names, 0, now) }
+        reject { TournamentRules.updateDetails(changed, "owner", "Nowy turniej", now + 2000, names, 0, now) }
+        reject { TournamentRules.updateDetails(item, "owner", "Nowy turniej", now + 2000, names, 0, item.startDate) }
+    }
+    @Test fun `shuffle cannot be restored by editing or changing team count`() {
+        val item = tournament().copy(startDate = now + 1000)
+        val shuffled = TournamentRules.shuffle(item, "owner", now)
+        assertTrue(shuffled.shuffleUsed)
+        reject { TournamentRules.shuffle(shuffled, "owner", now) }
+        reject { TournamentRules.shuffle(item, "editor", now) }
+        reject { TournamentRules.shuffle(item, "owner", item.startDate) }
+        val changed = TournamentRules.updateDetails(shuffled, "owner", "Nowy turniej", now + 2000,
+            teams(8).map { it.name }, shuffled.version, now)
+        assertEquals(7, changed.matches.size)
+        assertTrue(changed.shuffleUsed)
+        reject { TournamentRules.shuffle(changed, "owner", now) }
     }
 }

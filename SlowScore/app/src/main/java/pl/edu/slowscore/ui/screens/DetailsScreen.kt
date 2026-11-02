@@ -18,14 +18,14 @@ internal fun DetailsScreen(model: ScoreViewModel, state: ScreenState, item: Tour
     var editor by rememberSaveable(item.id) { mutableStateOf("") }
     var scoreId by rememberSaveable(item.id) { mutableStateOf<String?>(null) }
     var editing by rememberSaveable(item.id) { mutableStateOf(false) }
-    var now by remember(item.id) { mutableLongStateOf(System.currentTimeMillis()) }
+    var now by remember(item.id) { mutableLongStateOf(model.controller.now()) }
     var confirm by remember { mutableStateOf<Pair<String, () -> Unit>?>(null) }
     val owner = state.user?.userId == item.ownerId
     val beforeStart = TournamentRules.beforeStart(item, now)
     val canEnterResults = TournamentRules.canEnterResults(item, now)
-    LaunchedEffect(item.id) {
+    LaunchedEffect(item.id, item.version, state.busy, state.now) {
         while (true) {
-            now = System.currentTimeMillis()
+            now = model.controller.now()
             delay(1000)
         }
     }
@@ -66,7 +66,7 @@ internal fun DetailsScreen(model: ScoreViewModel, state: ScreenState, item: Tour
                     if (tab == "bracket" && next != null) Text("Awans → runda ${next.round + 1}, mecz ${next.position + 1}", style = MaterialTheme.typography.bodySmall)
                     if (TournamentRules.canEdit(item, state.user?.userId) && canEnterResults
                         && match.homeTeamId != null && match.awayTeamId != null && next?.result == null) {
-                        TextButton(enabled = !state.busy, onClick = { scoreId = match.id }) { Text(if (match.result == null) "Wpisz wynik" else "Popraw wynik") }
+                        TextButton(enabled = !state.busy, onClick = { model.controller.clearNotice(); scoreId = match.id }) { Text(if (match.result == null) "Wpisz wynik" else "Popraw wynik") }
                     }
                 }
             }
@@ -76,7 +76,7 @@ internal fun DetailsScreen(model: ScoreViewModel, state: ScreenState, item: Tour
         HorizontalDivider()
         Text("Zarządzanie turniejem", style = MaterialTheme.typography.titleLarge)
         if (beforeStart) {
-            OutlinedButton(enabled = !state.busy, onClick = { editing = true }) { Text("Edytuj turniej") }
+            OutlinedButton(enabled = !state.busy, onClick = { model.controller.clearNotice(); editing = true }) { Text("Edytuj turniej") }
             OutlinedButton(enabled = !state.busy && !item.shuffleUsed, onClick = {
                 confirm = "Drabinkę można przelosować tylko raz. Wykorzystać dodatkowe losowanie?" to { model.run { shuffle() } }
             }) { Text("Losuj pary ponownie") }

@@ -114,7 +114,7 @@ private fun FeedScreen(model: ScoreViewModel, state: ScreenState, onCreate: () -
             FilterChip(!state.monthly, { model.controller.period(false, 0) }, label = { Text("Tydzień") })
             FilterChip(state.monthly, { model.controller.period(true, 0) }, label = { Text("Miesiąc") })
         }
-        val range = TournamentRules.historyRange(System.currentTimeMillis(), state.monthly, state.offset)
+        val range = TournamentRules.historyRange(model.controller.now(), state.monthly, state.offset)
         Text("${date(range.start).substringBefore(' ')} – ${date(range.end - 1).substringBefore(' ')}")
         Row {
             TextButton(onClick = { model.controller.period(state.monthly, state.offset - 1) }) { Text("← Poprzedni") }
@@ -131,7 +131,7 @@ private fun FeedScreen(model: ScoreViewModel, state: ScreenState, onCreate: () -
             Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(item.sport.title, color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelMedium)
                 Text(item.name, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                Text("${TournamentRules.statusAt(item, System.currentTimeMillis()).title} • drużyny: ${item.teams.size}")
+                Text("${TournamentRules.statusAt(item, model.controller.now()).title} • drużyny: ${item.teams.size}")
                 Text(date(item.startDate), style = MaterialTheme.typography.bodySmall)
             }
         }
