@@ -6,7 +6,6 @@ const { randomUUID } = require("node:crypto");
 const rules = require("./rules");
 initializeApp();
 const db = getFirestore();
-// Wspólny projekt deweloperski: dostęp wymaga konta i uprawnień, bez rejestrowania urządzeń.
 exports.score = onCall({ region: "europe-central2", enforceAppCheck: false, maxInstances: 10 }, async request => {
   if (!request.auth) throw new HttpsError("unauthenticated", "Zaloguj się, aby kontynuować.");
   const uid = request.auth.uid, args = request.data;
@@ -33,7 +32,7 @@ exports.score = onCall({ region: "europe-central2", enforceAppCheck: false, maxI
       const ref = db.collection("tournaments").doc();
       await ref.create({ id: ref.id, name, sport: args.sport, ownerId: uid, startDate: args.startDate,
         endDate: null, status: "DRAFT", teams, matches: rules.bracket(teams), editors: {}, editorIds: [],
-        version: 0, createdAt: now, updatedAt: now });
+        version: 0, shuffleUsed: false, createdAt: now, updatedAt: now });
       return { id: ref.id };
     }
     const id = rules.text(args.id, 1, 100); rules.check(!id.includes("/"), "Nieprawidłowy identyfikator.");

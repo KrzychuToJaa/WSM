@@ -1,5 +1,5 @@
 "use strict";
-const { randomInt } = require("node:crypto");
+const { randomInt, randomUUID } = require("node:crypto");
 class RuleError extends Error {
   constructor(message, code = "invalid-argument") { super(message); this.code = code; }
 }
@@ -38,6 +38,11 @@ function bracket(teams, shuffle = false) {
   return matches;
 }
 function owner(item, uid) { check(item.ownerId === uid, "Tylko właściciel może wykonać tę operację.", "permission-denied"); }
+function beforeStart(item, now) {
+  check(["DRAFT", "UPCOMING"].includes(item.status) && now < item.startDate &&
+    item.matches.every(match => match.result === null),
+    "Turniej można zmieniać tylko przed rozpoczęciem.", "failed-precondition");
+}
 function score(sport, match, result) {
   check(result && typeof result === "object" && !Array.isArray(result) &&
     Object.keys(result).every(key => ["homeScore", "awayScore", "winnerId", "sets"].includes(key)), "Nieprawidłowy wynik.");
@@ -69,6 +74,7 @@ function change(item, uid, action, args, now) {
   if (action === "result") {
     check(uid === item.ownerId || Object.hasOwn(item.editors, uid), "Brak uprawnień do wpisywania wyników.", "permission-denied");
     check(["UPCOMING", "ONGOING"].includes(item.status), "Turniej nie jest aktywny.", "failed-precondition");
+    check(now >= item.startDate, "Wyniki można wpisywać dopiero po rozpoczęciu turnieju.", "failed-precondition");
     const match = next.matches.find(m => m.id === args.matchId);
     check(match, "Nie znaleziono meczu.", "not-found"); integer(args.version, 0, Number.MAX_SAFE_INTEGER);
     check(match.version === args.version, "Wynik zmienił się. Odśwież dane.", "aborted");
@@ -82,7 +88,27 @@ function change(item, uid, action, args, now) {
     owner(item, uid);
     switch (action) {
       case "shuffle":
-        check(item.status === "DRAFT", "Losowanie dostępne tylko w szkicu.", "failed-precondition"); next.matches = bracket(item.teams, true); break;
+        beforeStart(item, now);
+        check(item.shuffleUsed !== true, "Dodatkowe losowanie zostało już wykorzystane.", "failed-precondition");
+        next.matches = bracket(item.teams, true);
+        next.shuffleUsed = true;
+        break;
+      case "updateDetails": {
+        beforeStart(item, now);
+        integer(args.version, 0, Number.MAX_SAFE_INTEGER);
+        check(args.version === item.version, "Turniej zmienił się. Odśwież dane.", "aborted");
+        check(Array.isArray(args.teamNames) && [4, 8, 16].includes(args.teamNames.length), "Wybierz 4, 8 lub 16 drużyn.");
+        const teams = args.teamNames.map((name, index) => ({
+          id: item.teams[index]?.id ?? randomUUID(), name: text(name, 2, 40)
+        }));
+        const name = text(args.name, 3, 80);
+        draft(name, args.startDate, teams, now);
+        next.name = name;
+        next.startDate = args.startDate;
+        next.teams = teams;
+        if (teams.length !== item.teams.length) next.matches = bracket(teams);
+        break;
+      }
       case "publish":
         check(item.status === "DRAFT", "Turniej został już opublikowany.", "failed-precondition");
         draft(item.name, item.startDate, item.teams, now); next.status = "UPCOMING"; break;
