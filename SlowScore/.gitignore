@@ -7,6 +7,7 @@ output/
 .kotlin/
 .idea/
 **/build/
+**/bin/
 local.properties
 firebase/.firebaserc
 firebase/*-debug.log
