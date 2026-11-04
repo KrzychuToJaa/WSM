@@ -19,14 +19,14 @@ class AppTest {
     @get:Rule val compose = createComposeRule()
     private lateinit var model: ScoreViewModel
     private var now = System.currentTimeMillis()
-    private fun start(repository: ScoreRepository = DemoRepository(clock = { now })) {
+    private fun start(repository: ScoreRepository = TestRepository(clock = { now })) {
         model = ScoreViewModel(ApplicationProvider.getApplicationContext<Application>(), repository, clock = { now })
         compose.setContent { SlowScoreApp(model) }
         compose.waitForIdle()
     }
     private fun click(text: String) {
         val node = compose.onAllNodesWithText(text).onFirst()
-        try { node.performScrollTo() } catch (_: AssertionError) { /* Dolna nawigacja nie jest przewijana. */ }
+        try { node.performScrollTo() } catch (_: AssertionError) {  }
         node.performClick(); compose.waitForIdle()
     }
     private fun action(block: suspend ScoreController.() -> Unit) { compose.runOnIdle { model.run(block) }; compose.waitForIdle() }
@@ -46,11 +46,11 @@ class AppTest {
         click("Drabinka"); compose.onAllNodesWithText("Awans → runda 2, mecz 1").onFirst().assertExists()
         click("Mecze"); click("← Lista turniejów")
         click("Moje"); compose.onNodeWithText("Twoje konto").assertExists()
-        click("organizer — właściciel"); compose.onNodeWithText("Zalogowano jako organizer").assertExists()
+        action { signInTestUser("test_owner") }; compose.onNodeWithText("Zalogowano jako organizer").assertExists()
         click("Wyloguj"); compose.onNodeWithText("Zalogowano jako organizer").assertDoesNotExist()
     }
     @Test fun organizerCreatesPublishesAndFinishesATournament() {
-        start(); action { demoUser("demo_owner") }
+        start(); action { signInTestUser("test_owner") }
         click("Utwórz turniej")
         compose.onNodeWithText("Nazwa turnieju").performTextInput("Test Cup")
         compose.onNodeWithText("Drużyny — każda w osobnym wierszu").performTextInput("Team A\nTeam B\nTeam C\nTeam D")
@@ -87,10 +87,10 @@ class AppTest {
         assertEquals(TournamentStatus.ARCHIVED, model.controller.state.value.selected!!.status)
         click("Historia"); click("Miesiąc"); click("← Poprzedni"); click("Następny →"); click("Tydzień")
         click("Moje"); click("Śledzone")
-        compose.onNodeWithText("Brak turniejów dla wybranych filtrów. Zmień dyscyplinę lub okres.").assertExists()
+        compose.onNodeWithText("Brak turniejów dla wybranych filtrów.").assertExists()
     }
     @Test fun resultFormRejectsInvalidValuesAndShowsVolleyballSets() {
-        start(); action { demoUser("demo_owner"); open("sample_2") }
+        start(); action { signInTestUser("test_owner"); open("sample_2") }
         startTournament()
         compose.onAllNodesWithText("Wpisz wynik").onFirst().performScrollTo().performClick()
         compose.onNodeWithText("Sety, np. 25:20 — każdy w nowym wierszu").performTextInput("25:24\n25:0\n25:0")
@@ -100,10 +100,9 @@ class AppTest {
         click("Zapisz wynik"); compose.onNodeWithText("25:20 • 25:21 • 25:19").assertExists()
     }
     @Test fun firebaseAccountFormsAndProfileRecoveryAreReachable() {
-        val demo = DemoRepository()
-        val repository = object : ScoreRepository by demo {
-            override val isDemo = false
-            override suspend fun signIn(email: String, password: String): UserProfile { demo.useDemoUser("demo_owner"); return demo.currentUser()!! }
+        val testRepository = TestRepository()
+        val repository = object : ScoreRepository by testRepository {
+            override suspend fun signIn(email: String, password: String): UserProfile { testRepository.useTestUser("test_owner"); return testRepository.currentUser()!! }
             override suspend fun signUp(email: String, password: String, username: String) = signIn(email, password)
             override suspend fun resetPassword(email: String) {}
         }
@@ -121,7 +120,7 @@ class AppTest {
         compose.onNodeWithText("Zalogowano jako organizer").assertExists()
     }
     @Test fun invalidDraftPreservesInputAndCanBeCancelled() {
-        start(); action { demoUser("demo_owner") }; click("Utwórz turniej")
+        start(); action { signInTestUser("test_owner") }; click("Utwórz turniej")
         compose.onNodeWithText("Termin: dd.MM.rrrr GG:mm").performTextReplacement("bad date")
         click("Zapisz szkic i utwórz drabinkę"); compose.onNodeWithText("Format daty: dd.MM.rrrr GG:mm.").assertExists()
         click("Anuluj"); compose.onNodeWithText("Na kampusie").assertExists()
@@ -129,7 +128,7 @@ class AppTest {
         click("Odśwież dane")
     }
     @Test fun ownerEditsTournamentWithoutRestoringConsumedShuffle() {
-        start(); action { demoUser("demo_owner"); create("Edit Cup", Sport.FOOTBALL, now + 60000, listOf("AA", "BB", "CC", "DD")) }
+        start(); action { signInTestUser("test_owner"); create("Edit Cup", Sport.FOOTBALL, now + 60000, listOf("AA", "BB", "CC", "DD")) }
         click("Losuj pary ponownie"); click("Potwierdź")
         click("Edytuj turniej")
         compose.onNodeWithText("Nazwa turnieju").performTextReplacement("Updated Cup")
@@ -150,14 +149,14 @@ class AppTest {
         compose.onAllNodesWithText("Wpisz wynik").onFirst().assertExists()
     }
     @Test fun failedEditKeepsInputAndDoesNotCloseForm() {
-        val demo = DemoRepository(clock = { now })
-        val repository = object : ScoreRepository by demo {
+        val testRepository = TestRepository(clock = { now })
+        val repository = object : ScoreRepository by testRepository {
             override suspend fun updateDetails(id: String, name: String, startDate: Long, teamNames: List<String>, version: Int) {
                 error("Nie udało się zapisać zmian.")
             }
         }
         start(repository)
-        action { demoUser("demo_owner"); open("sample_0") }
+        action { signInTestUser("test_owner"); open("sample_0") }
         click("Edytuj turniej")
         compose.onNodeWithText("Nazwa turnieju").performTextReplacement("Unsaved Cup")
         click("Zapisz zmiany")

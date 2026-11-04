@@ -3,6 +3,9 @@ package pl.edu.slowscore
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.google.firebase.FirebaseApp
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.*
+import com.google.firebase.functions.FirebaseFunctions
 import com.google.firebase.FirebaseOptions
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.delay
@@ -15,11 +18,16 @@ import pl.edu.slowscore.domain.*
 @RunWith(AndroidJUnit4::class)
 class FirebaseFlowTest {
     @Test fun realAndroidSdkCompletesFirebaseTournamentLifecycle() = runBlocking {
-        assertTrue("Test wymaga -PfirebaseEmulator=true", BuildConfig.USE_FIREBASE_EMULATORS)
         val context = InstrumentationRegistry.getInstrumentation().targetContext
-        val app = FirebaseApp.initializeApp(context, FirebaseOptions.Builder().setProjectId("demo-slowscore")
-            .setApiKey("AIzaSy" + "0".repeat(33)).setApplicationId("1:123456789:android:abcdef123456").build(), "integration-${System.nanoTime()}")
-        val repo = FirebaseRepository(app, true)
+        val app = FirebaseApp.initializeApp(context, FirebaseOptions.Builder(requireNotNull(FirebaseOptions.fromResource(context)))
+            .setProjectId("demo-slowscore").build(), "integration-${System.nanoTime()}")
+        FirebaseAuth.getInstance(app).useEmulator("10.0.2.2", 9099)
+        val db = FirebaseFirestore.getInstance(app)
+        db.useEmulator("10.0.2.2", 8080)
+        db.firestoreSettings = FirebaseFirestoreSettings.Builder()
+            .setLocalCacheSettings(MemoryCacheSettings.newBuilder().build()).build()
+        FirebaseFunctions.getInstance(app, "europe-central2").useEmulator("10.0.2.2", 5001)
+        val repo = FirebaseRepository(app)
         val suffix = System.currentTimeMillis().toString()
         val ownerEmail = "owner$suffix@example.com"
         val password = "test-password-123"

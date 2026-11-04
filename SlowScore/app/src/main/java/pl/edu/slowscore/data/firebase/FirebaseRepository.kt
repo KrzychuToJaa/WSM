@@ -11,20 +11,11 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.tasks.await
 import pl.edu.slowscore.domain.*
 
-class FirebaseRepository(app: FirebaseApp, emulator: Boolean = false) : ScoreRepository {
-    override val isDemo = false
+class FirebaseRepository(app: FirebaseApp) : ScoreRepository {
     private val auth = FirebaseAuth.getInstance(app)
     private val db = FirebaseFirestore.getInstance(app)
     private val functions = FirebaseFunctions.getInstance(app, "europe-central2")
     private val gson = Gson()
-    init {
-        if (emulator) {
-            auth.useEmulator("10.0.2.2", 9099)
-            db.useEmulator("10.0.2.2", 8080)
-            functions.useEmulator("10.0.2.2", 5001)
-            db.firestoreSettings = FirebaseFirestoreSettings.Builder().setLocalCacheSettings(MemoryCacheSettings.newBuilder().build()).build()
-        }
-    }
     private fun uid() = requireNotNull(auth.currentUser?.uid) { "Zaloguj się, aby kontynuować." }
     private suspend fun call(action: String, args: Map<String, Any?> = emptyMap()): Any? = try {
         functions.getHttpsCallable("score").call(args + ("action" to action)).await().data
@@ -66,7 +57,6 @@ class FirebaseRepository(app: FirebaseApp, emulator: Boolean = false) : ScoreRep
     }
     override suspend fun resetPassword(email: String) = account { auth.sendPasswordResetEmail(email.trim()).await(); Unit }
     override suspend fun signOut() = auth.signOut()
-    override suspend fun useDemoUser(userId: String) { error("To konto działa wyłącznie w trybie demonstracyjnym.") }
     private fun parse(snapshot: DocumentSnapshot): Tournament {
         require(snapshot.exists()) { "Nie znaleziono turnieju." }
         return gson.fromJson(gson.toJson(snapshot.data), Tournament::class.java)

@@ -1,5 +1,6 @@
 plugins {
     id("org.jetbrains.kotlin.jvm")
+    `java-test-fixtures`
     jacoco
 }
 

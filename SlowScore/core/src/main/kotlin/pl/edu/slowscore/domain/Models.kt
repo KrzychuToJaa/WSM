@@ -27,5 +27,4 @@ data class Tournament(
     val version: Int = 0, val shuffleUsed: Boolean = false,
 )
 data class HistoryRange(val start: Long, val end: Long)
-data class DemoData(val tournaments: List<Tournament>, val followed: Map<String, Set<String>> = emptyMap())
 enum class Feed { PUBLIC, MINE, FOLLOWED, HISTORY }

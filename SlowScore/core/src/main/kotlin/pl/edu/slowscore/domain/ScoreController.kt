@@ -64,11 +64,6 @@ class ScoreController(val repository: ScoreRepository, private val clock: () -> 
         repository.resetPassword(email)
         mutable.value = mutable.value.copy(message = "Jeśli konto istnieje, otrzymasz wiadomość do zmiany hasła.")
     }
-    suspend fun demoUser(id: String) = action {
-        repository.useDemoUser(id)
-        mutable.value = ScreenState(busy = true)
-        reload()
-    }
     suspend fun signOut() = action {
         repository.signOut(); mutable.value = ScreenState(busy = true); reload()
     }

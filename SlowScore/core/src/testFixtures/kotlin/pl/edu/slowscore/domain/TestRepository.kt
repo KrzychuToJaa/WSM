@@ -2,32 +2,34 @@ package pl.edu.slowscore.domain
 
 import java.util.UUID
 
-class DemoRepository(
-    savedData: DemoData? = null,
+class TestRepository(
+    savedData: TestData? = null,
     private val clock: () -> Long = System::currentTimeMillis,
-    private val persist: (DemoData) -> Unit = {},
+    private val persist: (TestData) -> Unit = {},
 ) : ScoreRepository {
-    override val isDemo = true
     private var user: UserProfile? = null
     private var data = savedData ?: sampleData(clock())
-    private val users = listOf(UserProfile("demo_owner", "organizer"),
-        UserProfile("demo_editor", "editor"), UserProfile("demo_viewer", "viewer"))
+    private val users = listOf(UserProfile("test_owner", "organizer"),
+        UserProfile("test_editor", "editor"), UserProfile("test_viewer", "viewer"))
 
     private fun userId(): String = requireNotNull(user?.userId) { "Zaloguj się, aby kontynuować." }
-    private fun store(next: DemoData) { persist(next); data = next }
+    private fun store(next: TestData) { persist(next); data = next }
     private fun update(id: String, change: (Tournament) -> Tournament) {
         val old = data.tournaments.find { it.id == id } ?: error("Nie znaleziono turnieju.")
         val next = change(old)
         store(data.copy(tournaments = data.tournaments.map { if (it.id == id) next else it }))
     }
     override suspend fun currentUser() = user
-    override suspend fun signIn(email: String, password: String): UserProfile = error("W trybie demo wybierz jedno z kont demonstracyjnych.")
-    override suspend fun signUp(email: String, password: String, username: String): UserProfile = error("Rejestracja jest dostępna w trybie Firebase.")
-    override suspend fun finishProfile(username: String): UserProfile = error("Konta demonstracyjne mają już login.")
-    override suspend fun resetPassword(email: String) { error("Odzyskiwanie hasła jest dostępne w trybie Firebase.") }
+    override suspend fun signIn(email: String, password: String): UserProfile {
+        useTestUser(email)
+        return requireNotNull(user)
+    }
+    override suspend fun signUp(email: String, password: String, username: String): UserProfile = error("Rejestracja nie jest obsługiwana przez repozytorium testowe.")
+    override suspend fun finishProfile(username: String): UserProfile = error("Konto testowe ma już login.")
+    override suspend fun resetPassword(email: String) { error("Odzyskiwanie hasła nie jest obsługiwane przez repozytorium testowe.") }
     override suspend fun signOut() { user = null }
-    override suspend fun useDemoUser(userId: String) {
-        user = users.find { it.userId == userId } ?: error("Nie znaleziono konta demonstracyjnego.")
+    suspend fun useTestUser(userId: String) {
+        user = users.find { it.userId == userId } ?: error("Nie znaleziono konta testowego.")
     }
     override suspend fun load(feed: Feed): List<Tournament> = when (feed) {
         Feed.PUBLIC -> data.tournaments.filter { it.status in listOf(TournamentStatus.UPCOMING, TournamentStatus.ONGOING) }
@@ -93,19 +95,23 @@ class DemoRepository(
     override suspend fun followedIds(): Set<String> = data.followed[userId()].orEmpty()
 
     companion object {
-        fun sampleData(now: Long): DemoData {
+        fun sampleData(now: Long): TestData {
             val teams = listOf("Informatyka", "Mechanika", "Ekonomia", "Architektura").mapIndexed { index, name -> Team("team_$index", name) }
             val active = Sport.entries.mapIndexed { index, sport ->
                 Tournament("sample_$index", listOf("Puchar kampusu", "Liga wydziałów", "Akademicka siatkówka")[index],
-                    sport, "demo_owner", now + (index + 1) * 86_400_000L, TournamentStatus.UPCOMING,
-                    teams = teams, matches = TournamentRules.bracket(teams), editors = mapOf("demo_editor" to "editor"))
+                    sport, "test_owner", now + (index + 1) * 86_400_000L, TournamentStatus.UPCOMING,
+                    teams = teams, matches = TournamentRules.bracket(teams), editors = mapOf("test_editor" to "editor"))
             }
             var past = active.first().copy(id = "sample_past", name = "Jesienny puchar", startDate = now - 172_800_000)
             for (id in listOf("0_0", "0_1", "1_0")) {
                 val match = past.matches.first { it.id == id }
-                past = TournamentRules.saveResult(past, "demo_owner", id, MatchResult(2, 0, match.homeTeamId!!), match.version, now - 86_400_000)
+                past = TournamentRules.saveResult(past, "test_owner", id, MatchResult(2, 0, match.homeTeamId!!), match.version, now - 86_400_000)
             }
-            return DemoData(active + past)
+            return TestData(active + past)
         }
     }
 }
+
+data class TestData(val tournaments: List<Tournament>, val followed: Map<String, Set<String>> = emptyMap())
+
+suspend fun ScoreController.signInTestUser(id: String) = signIn(id, "test-password")

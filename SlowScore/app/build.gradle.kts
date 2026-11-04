@@ -4,7 +4,7 @@ plugins {
     id("org.jetbrains.kotlin.plugin.compose")
     jacoco
 }
-if (file("google-services.json").exists()) apply(plugin = "com.google.gms.google-services")
+apply(plugin = "com.google.gms.google-services")
 
 android {
     namespace = "pl.edu.slowscore"
@@ -20,7 +20,6 @@ android {
 
     buildFeatures { compose = true; buildConfig = true }
     defaultConfig {
-        buildConfigField("boolean", "USE_FIREBASE_EMULATORS", providers.gradleProperty("firebaseEmulator").orElse("false").get())
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
     testOptions { unitTests.isIncludeAndroidResources = true }
@@ -47,6 +46,7 @@ dependencies {
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.ui:ui-tooling-preview")
     debugImplementation("androidx.compose.ui:ui-tooling")
+    testImplementation(testFixtures(project(":core")))
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.robolectric:robolectric:4.17")
     testImplementation("androidx.compose.ui:ui-test-junit4")

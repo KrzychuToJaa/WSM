@@ -7,7 +7,7 @@ import org.junit.Test
 class ScoreControllerTest {
     private val now = 1_800_000_000_000L
     private var time = now
-    private fun controller() = ScoreController(DemoRepository(clock = { time }), clock = { time })
+    private fun controller() = ScoreController(TestRepository(clock = { time }), clock = { time })
     @Test fun `guest filters periods detail and errors preserve state`() = runBlocking {
         val c = controller()
         c.refresh(); assertEquals(3, c.visibleItems.size)
@@ -28,12 +28,12 @@ class ScoreControllerTest {
     }
     @Test fun `organizer complete tournament flow reloads lists and permissions`() = runBlocking {
         val c = controller()
-        c.demoUser("demo_owner"); assertEquals("organizer", c.state.value.user!!.username)
+        c.signInTestUser("test_owner"); assertEquals("organizer", c.state.value.user!!.username)
         c.feed(Feed.MINE); assertEquals(4, c.visibleItems.size)
         c.create("New Cup", Sport.BASKETBALL, now + 10000, listOf("AA", "BB", "CC", "DD"))
         val id = c.state.value.selected!!.id
-        c.shuffle(); c.addEditor("viewer"); assertTrue("demo_viewer" in c.state.value.selected!!.editors)
-        c.removeEditor("demo_viewer"); assertFalse("demo_viewer" in c.state.value.selected!!.editors)
+        c.shuffle(); c.addEditor("viewer"); assertTrue("test_viewer" in c.state.value.selected!!.editors)
+        c.removeEditor("test_viewer"); assertFalse("test_viewer" in c.state.value.selected!!.editors)
         c.publish(); assertEquals(TournamentStatus.UPCOMING, c.state.value.selected!!.status)
         c.follow(); assertTrue(id in c.state.value.followed)
         c.follow(); assertFalse(id in c.state.value.followed)
@@ -49,9 +49,9 @@ class ScoreControllerTest {
         c.signOut(); assertNull(c.state.value.user); assertEquals(Feed.PUBLIC, c.state.value.feed); assertNull(c.state.value.selected)
     }
     @Test fun `account successes and cancellation are handled without fake success`() = runBlocking {
-        val demo = DemoRepository(clock = { now })
-        val repository = object : ScoreRepository by demo {
-            override suspend fun signIn(email: String, password: String): UserProfile { demo.useDemoUser("demo_owner"); return demo.currentUser()!! }
+        val testRepository = TestRepository(clock = { now })
+        val repository = object : ScoreRepository by testRepository {
+            override suspend fun signIn(email: String, password: String): UserProfile { testRepository.useTestUser("test_owner"); return testRepository.currentUser()!! }
             override suspend fun signUp(email: String, password: String, username: String) = signIn(email, password)
             override suspend fun finishProfile(username: String) = signIn("", "")
             override suspend fun resetPassword(email: String) {}
@@ -61,15 +61,15 @@ class ScoreControllerTest {
         c.signOut(); c.signUp("a@b.pl", "password", "owner"); assertNotNull(c.state.value.user)
         c.finishProfile("owner"); c.resetPassword("a@b.pl"); assertNotNull(c.state.value.message)
         c.clearNotice(); assertNull(c.state.value.message)
-        val cancel = ScoreController(object : ScoreRepository by demo { override suspend fun currentUser(): UserProfile? { throw CancellationException() } })
+        val cancel = ScoreController(object : ScoreRepository by testRepository { override suspend fun currentUser(): UserProfile? { throw CancellationException() } })
         try { cancel.refresh(); fail("Cancellation expected") } catch (_: CancellationException) { assertFalse(cancel.state.value.busy) }
     }
     @Test fun `double submit is blocked while repository is running`() = runBlocking {
         val gate = CompletableDeferred<Unit>()
         val started = CompletableDeferred<Unit>()
-        val demo = DemoRepository(clock = { now })
+        val testRepository = TestRepository(clock = { now })
         var calls = 0
-        val c = ScoreController(object : ScoreRepository by demo {
+        val c = ScoreController(object : ScoreRepository by testRepository {
             override suspend fun currentUser(): UserProfile? { calls++; started.complete(Unit); gate.await(); return null }
         })
         val first = launch { c.refresh() }; started.await()

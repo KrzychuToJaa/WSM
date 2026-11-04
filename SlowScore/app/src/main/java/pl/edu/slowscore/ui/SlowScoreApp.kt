@@ -1,7 +1,6 @@
 package pl.edu.slowscore.ui
 
 import androidx.activity.compose.BackHandler
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
@@ -66,8 +65,6 @@ fun SlowScoreApp(model: ScoreViewModel = viewModel()) {
         }) { padding ->
             Column(Modifier.fillMaxSize().padding(padding)) {
                 if (state.busy) LinearProgressIndicator(Modifier.fillMaxWidth())
-                if (controller.repository.isDemo) Text("Tryb demo • dane zapisane na tym urządzeniu",
-                    Modifier.fillMaxWidth().background(RetroStyle.gold).padding(10.dp), style = MaterialTheme.typography.labelSmall)
                 Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
                     state.error?.let {
                         Card(Modifier.fillMaxWidth().retroPanel(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)) {
@@ -123,7 +120,7 @@ private fun FeedScreen(model: ScoreViewModel, state: ScreenState, onCreate: () -
     }
     val items = model.controller.visibleItems
     if (items.isEmpty() && !state.busy) Card(Modifier.fillMaxWidth().retroPanel(), colors = CardDefaults.cardColors(containerColor = RetroStyle.panel)) {
-        Text("Brak turniejów dla wybranych filtrów. Zmień dyscyplinę lub okres.", Modifier.padding(20.dp))
+        Text("Brak turniejów dla wybranych filtrów.", Modifier.padding(20.dp))
     }
     items.forEach { item ->
         Card(onClick = { model.run { open(item.id) } }, enabled = !state.busy,
@@ -155,18 +152,12 @@ internal fun SportFilter(selected: Sport?, onChange: (Sport?) -> Unit) {
 
 @Composable
 private fun AccountScreen(model: ScoreViewModel, state: ScreenState) {
-    Title("Twoje konto", "Organizuj turnieje i zapisuj obserwowane wydarzenia.")
+    Title("Twoje konto")
     if (state.user != null) {
         Text("Zalogowano jako ${state.user?.username}", style = MaterialTheme.typography.titleMedium)
         OutlinedButton(enabled = !state.busy, onClick = { model.run { signOut() } }) { Text("Wyloguj") }
     }
-    if (model.controller.repository.isDemo) {
-        Text("Wybierz lokalne konto demonstracyjne. Nie wpisuj prawdziwego hasła.")
-        listOf("demo_owner" to "organizer — właściciel", "demo_editor" to "editor — wyniki", "demo_viewer" to "viewer — kibic").forEach { (id, label) ->
-            OutlinedButton(enabled = !state.busy, onClick = { model.run { demoUser(id) } }, modifier = Modifier.fillMaxWidth()) { Text(label) }
-        }
-        Text("Firebase uruchamia się po dodaniu konfiguracji projektu lub z wariantem emulatorów.")
-    } else if (state.user == null) {
+    if (state.user == null) {
         var register by rememberSaveable { mutableStateOf(false) }
         var email by rememberSaveable { mutableStateOf("") }
         var username by rememberSaveable { mutableStateOf("") }
@@ -188,7 +179,7 @@ private fun AccountScreen(model: ScoreViewModel, state: ScreenState) {
 @Composable
 private fun ProfileForm(model: ScoreViewModel, state: ScreenState) {
     var username by rememberSaveable { mutableStateOf("") }
-    Title("Dokończ profil", "Konto istnieje. Wybierz unikalny login.")
+    Title("Dokończ profil")
     OutlinedTextField(username, { username = it }, label = { Text("Login") }, singleLine = true)
     Button(enabled = !state.busy, onClick = { model.run { finishProfile(username) } }) { Text("Zapisz login") }
     TextButton(enabled = !state.busy, onClick = { model.run { signOut() } }) { Text("Wyloguj") }

@@ -3,7 +3,7 @@
   "private": true,
   "scripts": {
     "test": "firebase emulators:exec --only auth,firestore,functions --project demo-slowscore \"node --test tests/integration.test.js\"",
-    "test:android": "firebase emulators:exec --only auth,firestore,functions --project demo-slowscore \"..\\gradlew.bat -p .. --no-daemon :app:connectedDebugAndroidTest -PfirebaseEmulator=true\""
+    "test:android": "firebase emulators:exec --only auth,firestore,functions --project demo-slowscore \"..\\gradlew.bat -p .. --no-daemon :app:connectedDebugAndroidTest\""
   },
   "devDependencies": {
     "@firebase/rules-unit-testing": "6.0.0",
