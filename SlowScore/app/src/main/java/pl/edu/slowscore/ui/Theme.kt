@@ -1,6 +1,5 @@
 package pl.edu.slowscore.ui
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -12,7 +11,6 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
@@ -73,35 +71,3 @@ fun SlowScoreTheme(content: @Composable () -> Unit) {
 internal fun Modifier.retroPanel(): Modifier = drawBehind {
     drawRect(RetroStyle.ink.copy(alpha = 0.16f), topLeft = Offset(4.dp.toPx(), 4.dp.toPx()), size = size)
 }.border(RetroStyle.border, RetroStyle.ink, RoundedCornerShape(RetroStyle.corner))
-
-@Preview(showBackground = true, widthDp = 360)
-@Composable
-private fun RetroStylePreview() {
-    SlowScoreTheme {
-        Column(Modifier.background(RetroStyle.paper).padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-            Surface(color = RetroStyle.ink, contentColor = RetroStyle.panel) {
-                Column(Modifier.fillMaxWidth().padding(16.dp)) {
-                    Text("SlowScore", style = MaterialTheme.typography.headlineSmall)
-                    Text("TURNIEJE AKADEMICKIE", color = RetroStyle.gold, style = MaterialTheme.typography.labelMedium)
-                }
-            }
-            Title("Na kampusie", "Bądź na bieżąco z wynikami")
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                FilterChip(true, {}, label = { Text("Wszystkie") })
-                FilterChip(false, {}, label = { Text("Piłka nożna") })
-            }
-            Card(Modifier.fillMaxWidth().retroPanel(), colors = CardDefaults.cardColors(containerColor = RetroStyle.panel)) {
-                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("PIŁKA NOŻNA", color = RetroStyle.red, style = MaterialTheme.typography.labelMedium)
-                    Text("Puchar kampusu", style = MaterialTheme.typography.titleLarge)
-                    Text("Informatyka — Automatyka")
-                    Surface(color = RetroStyle.ink, contentColor = RetroStyle.gold) {
-                        Text("02 : 01", Modifier.fillMaxWidth().padding(12.dp), style = MaterialTheme.typography.displaySmall)
-                    }
-                }
-            }
-            Button(onClick = {}) { Text("Utwórz turniej") }
-            OutlinedTextField("organizer", {}, label = { Text("Login") }, modifier = Modifier.fillMaxWidth())
-        }
-    }
-}

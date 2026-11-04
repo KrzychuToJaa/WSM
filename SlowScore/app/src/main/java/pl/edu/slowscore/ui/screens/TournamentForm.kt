@@ -23,9 +23,7 @@ internal fun TournamentForm(model: ScoreViewModel, state: ScreenState,
 
     BackHandler { if (!state.busy) onClose() }
 
-    Title(if (editing) "Edytuj turniej" else "Nowy turniej",
-        if (editing) "Nazwę, drużyny i termin możesz zmieniać przed rozpoczęciem."
-        else "Zapisz szkic i sprawdź drabinkę przed publikacją.")
+    Title(if (editing) "Edytuj turniej" else "Nowy turniej")
     OutlinedTextField(name, { name = it }, label = { Text("Nazwa turnieju") },
         enabled = !state.busy, modifier = Modifier.fillMaxWidth(), singleLine = true)
     if (editing) Text("Dyscyplina: ${Sport.valueOf(sportName).title}")
@@ -34,9 +32,8 @@ internal fun TournamentForm(model: ScoreViewModel, state: ScreenState,
         supportingText = { Text("Strefa: Warszawa") }, enabled = !state.busy,
         singleLine = true, modifier = Modifier.fillMaxWidth())
     OutlinedTextField(teams, { teams = it }, label = { Text("Drużyny — każda w osobnym wierszu") },
-        supportingText = { Text("Dodaj 4, 8 lub 16 drużyn.") }, enabled = !state.busy,
+        supportingText = { Text("Liczba drużyn: 4, 8 lub 16") }, enabled = !state.busy,
         minLines = 5, modifier = Modifier.fillMaxWidth())
-    if (editing) Text("Przy tej samej liczbie drużyn pary zostają zachowane. Zmiana liczby drużyn tworzy nową drabinkę i nie przywraca dodatkowego losowania.")
     error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
     Button(enabled = !state.busy, onClick = {
         try {
