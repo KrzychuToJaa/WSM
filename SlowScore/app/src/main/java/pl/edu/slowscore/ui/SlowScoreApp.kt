@@ -103,7 +103,7 @@ internal fun Title(title: String, subtitle: String? = null) {
 @Composable
 private fun FeedScreen(model: ScoreViewModel, state: ScreenState, onCreate: () -> Unit, onLogin: () -> Unit) {
     Title(when (state.feed) { Feed.PUBLIC -> "Na kampusie"; Feed.MINE -> "Moje turnieje"; Feed.FOLLOWED -> "Obserwowane"; Feed.HISTORY -> "Historia wyników" },
-        "Drużyny, mecze i emocje — wybierz swój turniej.")
+        "Śledź lokalne turnieje swoich ulubionych drużyn.")
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         Button(enabled = !state.busy, onClick = if (state.user == null) onLogin else onCreate) { Text("Utwórz turniej") }
         TextButton(enabled = !state.busy, onClick = { model.run { refresh() } }) { Text("Odśwież") }
